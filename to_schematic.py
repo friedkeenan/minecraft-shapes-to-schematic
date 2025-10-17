@@ -2,8 +2,8 @@
 
 import mcschematic
 
-from pathlib     import Path
-from svgelements import SVG, Rect
+from pathlib import Path
+from svgelements import SVG, Rect, SimpleLine
 
 def convert(svg_path, schematic_path, brush, version):
     schematic_path = Path(schematic_path)
@@ -11,14 +11,16 @@ def convert(svg_path, schematic_path, brush, version):
     if schematic_path.suffix != ".schem":
         raise ValueError("Schematic path must end with the '.schem' extension")
 
-    svg    = SVG.parse(svg_path)
+    svg = SVG.parse(svg_path)
     blocks = list(svg.elements(lambda elem: isinstance(elem, Rect) and elem.fill == "#008000"))
+    y_lines = list(svg.elements(lambda elem: isinstance(elem, SimpleLine) and elem.stroke == "#FFFFFF" and elem.y1 == elem.y2))
 
     min_x = min(blocks, key=lambda elem: elem.x).x
     min_y = min(blocks, key=lambda elem: elem.y).y
 
-    next_min_y = min((block for block in blocks if block.y > min_y), key=lambda elem: elem.y).y
-    scale      = next_min_y - min_y
+    min_y_line = min(y_lines, key=lambda elem: elem.y1).y1
+    next_min_y_line = min((line for line in y_lines if line.y1 > min_y_line), key=lambda elem: elem.y1).y1
+    scale = next_min_y_line - min_y_line
 
     schematic = mcschematic.MCSchematic()
     for block in blocks:
@@ -32,17 +34,18 @@ def convert(svg_path, schematic_path, brush, version):
     schematic_path.parent.mkdir(parents=True, exist_ok=True)
     schematic.save(str(schematic_path.parent), schematic_path.stem, version)
 
+
 if __name__ == "__main__":
     import argparse
     import sys
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("svg",       type=Path, help="The path to the SVG file")
+    parser.add_argument("svg", type=Path, help="The path to the SVG file")
     parser.add_argument("schematic", type=Path, help="The path at which to save the schematic")
 
-    parser.add_argument("--brush",   default="minecraft:gold_block", help="The block to use for the schematic. By default 'minecraft:gold_block'")
-    parser.add_argument("--version", default="JE_1_12_2",            help="The version for which the schematic is for. By default 'JE_1_12_2'")
+    parser.add_argument("--brush", default="minecraft:gold_block", help="The block to use for the schematic. By default 'minecraft:gold_block'")
+    parser.add_argument("--version", default="JE_1_12_2", help="The version for which the schematic is for. By default 'JE_1_12_2'")
 
     args = parser.parse_args()
 
